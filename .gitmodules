@@ -1,0 +1,3 @@
+[submodule "MA-shapefiles"]
+	path = MA-shapefiles
+	url = https://github.com/mggg-states/MA-shapefiles
