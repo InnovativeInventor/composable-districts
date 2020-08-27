@@ -3,6 +3,7 @@ import multiprocessing
 import tqdm
 import functools
 import itertools
+import glob
 
 
 def load():
@@ -24,6 +25,7 @@ def decompose_addresses(addresses, input_tuple):
     """
     addresses_df, addresses_index = addresses
     count, region = input_tuple
+
     # print("Input", input_tuple)
     # contains = []
     # for point_index, each_point in tqdm.tqdm(
@@ -34,11 +36,14 @@ def decompose_addresses(addresses, input_tuple):
 
     # return count, contains
 
-    possible_matches_index = list(addresses_index.intersection(region["geometry"].bounds))
+    possible_matches_index = list(
+        addresses_index.intersection(region["geometry"].bounds)
+    )
     possible_matches = addresses_df.iloc[possible_matches_index]
     precise_matches = possible_matches[possible_matches.intersects(region["geometry"])]
 
-    return count, precise_matches
+    return count, " ".join(precise_matches["hash"].tolist())
+
 
 def fold(shapefile, input_tuple):
     """
@@ -46,8 +51,8 @@ def fold(shapefile, input_tuple):
     """
     count, contains = input_tuple
 
+    print(contains)
     shapefile.at[count, "addresses"] = contains
-    # shapefile.loc[count, "addresses"] = contains # doesn't work
 
     return shapefile
 
@@ -55,47 +60,70 @@ def fold(shapefile, input_tuple):
 unchain = itertools.chain.from_iterable
 
 if __name__ == "__main__":
-    process_count = 6
 
-    ma_addresses = geopandas.read_file(
-        "data/openaddresses/us/ma/statewide-addresses-state.geojson"
-    )
-    ma_shapefile = geopandas.read_file("MA-shapefiles/12_16/MA_precincts_12_16.shp")
-    ma_shapefile["addresses"] = [[]]*len(ma_shapefile)
+    states = glob.glob("*-shapefiles/")
+    for each_state in states:
+        shapefiles = glob.glob(each_state + "*/*.shp")
+        state = each_state.split("-")[0].lower()
+        for each_shapefile in shapefiles:
+            print("Using", each_shapefile)
 
-    decompose_addresses_ma = functools.partial(decompose_addresses, (ma_addresses, ma_addresses.sindex))
-    # decompose_addresses_ma = functools.partial(decompose_addresses, ma_addresses)
+            addresses = geopandas.read_file(
+                "data/openaddresses/us/{state}/statewide-addresses-state.geojson".format(state=state)
+            )
+            shapefile = geopandas.read_file(each_shapefile)
+            shapefile["addresses"] = [[]] * len(shapefile)
 
-    print(ma_shapefile)
-    print("Loaded")
+            decompose_addresses_state = functools.partial(
+                decompose_addresses, (addresses, addresses.sindex)
+            )
 
-    print("Starting multiprocessing with", process_count, "processes")
+            # print(shapefile)
+            print("Loaded", each_shapefile)
 
-    with multiprocessing.Pool(process_count) as p:
-        shapefile = functools.reduce(
-            fold,
-            tqdm.tqdm(
-                p.map(decompose_addresses_ma,
-                    tqdm.tqdm(ma_shapefile.iterrows(), total=len(ma_shapefile))),
-            ),
-            # tqdm.tqdm(
-            #     p.imap(decompose_addresses_ma, ma_shapefile.iterrows()),
-            #     total=len(ma_shapefile),
-            # ),
-            ma_shapefile,
-        )
+            # No multiprocessing
+            for count, each_district in tqdm.tqdm(shapefile.iterrows(), total=len(shapefile)):
+                each_district["addresses"] = []
 
-    print(shapefile)
+                count, contains = decompose_addresses_state((count, each_district))
+                shapefile.at[count, "addresses"] = contains
 
-    # for district_index, each_district in tqdm.tqdm(ma_shapefile.iterrows(), total=len(ma_shapefile)):
-    #     each_district["addresses"] = []
+            filename = each_shapefile.split("/")[-1].split(".")[0]
+            try:
+                shapefile.to_file("processed/{state}/{filename}.geojson".format(filename=filename, state=state), driver='GeoJSON')
+            except ValueError as e:
+                print(e)
 
-    #     # drop_points = [] # points to drop
-    #     for point_index, each_point in tqdm.tqdm(ma_addresses.iterrows(), total=len(ma_addresses)):
-    #         # print(each_district)
-    #         if each_district["geometry"].contains(each_point["geometry"]):
-    #             print("True")
-    #             each_district["addresses"].append(each_point)
-    #             # drop_points.append(point_index)
-    #     # ma = ma.drop(labels=drop_points)
-    #     # assert len(ma) < size
+            try:
+                shapefile.to_file("processed/{state}/{filename}.shp".format(filename=filename, state=state))
+            except ValueError as e:
+                print(e)
+
+            try:
+                shapefile.to_file("processed/{state}/{filename}.gpkg".format(filename=filename, state=state), layer="districts", driver="GPKG")
+            except ValueError as e:
+                print(e)
+
+
+            # print("Starting multiprocessing with", process_count, "processes")
+
+            # with multiprocessing.Pool(process_count) as p:
+            #     shapefile = functools.reduce(
+            #         fold,
+            #         tqdm.tqdm(
+            #             p.map(
+            #                 decompose_addresses_ma,
+            #                 tqdm.tqdm(ma_shapefile.iterrows(), total=len(ma_shapefile)),
+            #                 # 10,
+            #             ),
+            #         ),
+            #         # tqdm.tqdm(
+            #         #     p.imap(decompose_addresses_ma, ma_shapefile.iterrows()),
+            #         #     total=len(ma_shapefile),
+            #         # ),
+            #         ma_shapefile,
+            #     )
+
+            #     print(shapefile)
+
+            # shapefile.to_file("shapefile.geojson", driver='GeoJSON')
