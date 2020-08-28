@@ -1,6 +1,13 @@
 data/
 MA-shapefiles/
 processed/*/
+*.shp
+*.geojson
+*.dbf
+*.gpkg
+*.shx
+*.cpg
+**.xz
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
