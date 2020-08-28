@@ -2,6 +2,7 @@ import geopandas
 import multiprocessing
 import tqdm
 import functools
+import shapely
 import itertools
 import glob
 
@@ -36,11 +37,16 @@ def decompose_addresses(addresses, input_tuple):
 
     # return count, contains
 
+    if isinstance(region, shapely.geometry.polygon.Polygon):
+        geometry = region
+    else:
+        geometry = region["geometry"]
+
     possible_matches_index = list(
-        addresses_index.intersection(region["geometry"].bounds)
+        addresses_index.intersection(geometry.bounds)
     )
     possible_matches = addresses_df.iloc[possible_matches_index]
-    precise_matches = possible_matches[possible_matches.intersects(region["geometry"])]
+    precise_matches = possible_matches[possible_matches.intersects(geometry)]
 
     return count, " ".join(precise_matches["hash"].tolist())
 
@@ -69,7 +75,9 @@ if __name__ == "__main__":
             print("Using", each_shapefile)
 
             addresses = geopandas.read_file(
-                "data/openaddresses/us/{state}/statewide-addresses-state.geojson".format(state=state)
+                "data/openaddresses/us/{state}/statewide-addresses-state.geojson".format(
+                    state=state
+                )
             )
             shapefile = geopandas.read_file(each_shapefile)
             shapefile["addresses"] = [[]] * len(shapefile)
@@ -82,7 +90,9 @@ if __name__ == "__main__":
             print("Loaded", each_shapefile)
 
             # No multiprocessing
-            for count, each_district in tqdm.tqdm(shapefile.iterrows(), total=len(shapefile)):
+            for count, each_district in tqdm.tqdm(
+                shapefile.iterrows(), total=len(shapefile)
+            ):
                 each_district["addresses"] = []
 
                 count, contains = decompose_addresses_state((count, each_district))
@@ -90,20 +100,34 @@ if __name__ == "__main__":
 
             filename = each_shapefile.split("/")[-1].split(".")[0]
             try:
-                shapefile.to_file("processed/{state}/{filename}.geojson".format(filename=filename, state=state), driver='GeoJSON')
+                shapefile.to_file(
+                    "processed/{state}/{filename}.geojson".format(
+                        filename=filename, state=state
+                    ),
+                    driver="GeoJSON",
+                )
             except ValueError as e:
                 print(e)
 
             try:
-                shapefile.to_file("processed/{state}/{filename}.shp".format(filename=filename, state=state))
+                shapefile.to_file(
+                    "processed/{state}/{filename}.shp".format(
+                        filename=filename, state=state
+                    )
+                )
             except ValueError as e:
                 print(e)
 
             try:
-                shapefile.to_file("processed/{state}/{filename}.gpkg".format(filename=filename, state=state), layer="districts", driver="GPKG")
+                shapefile.to_file(
+                    "processed/{state}/{filename}.gpkg".format(
+                        filename=filename, state=state
+                    ),
+                    layer="districts",
+                    driver="GPKG",
+                )
             except ValueError as e:
                 print(e)
-
 
             # print("Starting multiprocessing with", process_count, "processes")
 
