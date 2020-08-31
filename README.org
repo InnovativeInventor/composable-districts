@@ -8,10 +8,9 @@
 ** Merge Operation
    To merge, the address containing the most information when parsed (using libpostal) will added to the output address.
    An address-location pair is considered a duplicate if two conditions are satisfied:
-
-**** The two addresses normalize to the same (or similar) string using libpostal
-
-**** The two addresses are geographically within 1 kilometer of each other
+   
+   1. The two addresses normalize to the same (or similar) string using libpostal
+   2. The two addresses are geographically within 1 kilometer of each other
 
 
 ** Diff Operation (from and address-based representation)
@@ -25,8 +24,7 @@
    Finally, if one of the regions completely contains the other, the symmetric difference is used.
 
 ** Diff Operation (from a polygon representation)
-
-*** The diff between two shapefiles are calculated by first converting to an address-based representation, then utilizing the previously defined diff operation on the address-based representation.
+   The diff between two shapefiles are calculated by first converting to an address-based representation, then utilizing the previously defined diff operation on the address-based representation.
 
 ** Voronoi Diagram
    In order to visualize an address-based representation of districts better, a voronoi diagram can be used to create a polygon representation of the geographical region.
