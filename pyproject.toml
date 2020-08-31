@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "geocompose"
 version = "0.1.0"
-description = ""
+description = "A library for representing geographical regions as a set of addresses. Intended for use in redistricting."
 authors = ["Max Fan <root@max.fan>"]
 license = "MIT License"
 
