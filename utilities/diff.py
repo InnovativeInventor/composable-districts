@@ -9,6 +9,8 @@ import tqdm
 from process import decompose_addresses
 
 """
+A simple diff utility on the address-based representation of precincts.
+
 Usage:
 python3 diff.py [new] [old]
 """
