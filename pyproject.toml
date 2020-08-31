@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "geocompose"
+version = "0.1.0"
+description = ""
+authors = ["Max Fan <root@max.fan>"]
+license = "MIT License"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+geopandas = "^0.8.1"
+pydantic = "^1.6.1"
+shapely = "^1.7.1"
+postal = "^1.1.9"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.0.1"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"

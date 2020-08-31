@@ -8,6 +8,7 @@ processed/*/
 *.shx
 *.cpg
 **.xz
+plan.md
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
