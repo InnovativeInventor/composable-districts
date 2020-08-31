@@ -125,12 +125,12 @@ def find_intersect(shapefile_2, shapefile_2_index, each_precinct_1):
                 #     )
                 # ):
                 for each_polygon in chain_until(
-                        shapely.geometry.polygon.Polygon,
-                        (
-                            shapely.geometry.point.Point,
-                            shapely.geometry.linestring.LineString,
-                        ),
-                        intersection,
+                    shapely.geometry.polygon.Polygon,
+                    (
+                        shapely.geometry.point.Point,
+                        shapely.geometry.linestring.LineString,
+                    ),
+                    intersection,
                 ):
                     # for each_polygon in chain_until(shapely.geometry.polygon.Polygon,() , intersection):
                     assert isinstance(

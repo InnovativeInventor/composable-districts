@@ -42,9 +42,7 @@ def decompose_addresses(addresses, input_tuple):
     else:
         geometry = region["geometry"]
 
-    possible_matches_index = list(
-        addresses_index.intersection(geometry.bounds)
-    )
+    possible_matches_index = list(addresses_index.intersection(geometry.bounds))
     possible_matches = addresses_df.iloc[possible_matches_index]
     precise_matches = possible_matches[possible_matches.intersects(geometry)]
 
