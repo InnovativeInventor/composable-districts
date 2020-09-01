@@ -58,7 +58,7 @@ class Addresses:
 
     def __add__(self, other):
         raise NotImplementedError
-        return AddressDataFrame()
+        return Addresses()
 
     def generate_diagram(self):
         raise NotImplementedError
