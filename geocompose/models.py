@@ -33,7 +33,7 @@ class Address(BaseModel):
 
 class Region(BaseModel):
     """
-    A geographical region is represented by a set of addresses and 
+    A geographical region is represented by a set of addresses and
     """
 
     addresses: Set[Address]
