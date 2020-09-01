@@ -4,7 +4,7 @@ import pytest
 
 def test_init_cls():
     with pytest.raises(Exception):
-        precinct = geocompose.Addresses()
+        geocompose.Addresses()
 
     geocompose.read_files(
         "tests/data/city_of_boston-addresses-city.geojson",
