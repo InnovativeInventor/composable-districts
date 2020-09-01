@@ -22,8 +22,8 @@ jobs:
         git clone https://github.com/openvenues/libpostal
         cd libpostal
         ./bootstrap.sh
-        mkdir data
-        ./configure --datadir=$PWD/data
+        mkdir libpostal-data
+        ./configure --datadir=$PWD/libpostal-data
         make -j4
         sudo make install
         sudo ldconfig
