@@ -3,7 +3,6 @@
 
 #+caption: 
 [[file:https://github.com/InnovativeInventor/geocompose/workflows/Python%20testing%20and%20linting/badge.svg]]
-
 #+caption: 
 [[file:https://codecov.io/gh/InnovativeInventor/geocompose/branch/master/graph/badge.svg]]
 
