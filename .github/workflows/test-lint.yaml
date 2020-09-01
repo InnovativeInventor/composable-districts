@@ -43,6 +43,10 @@ jobs:
         cd data
         echo $PWD
         git clone https://github.com/mggg-states/MA-shapefiles
+        cd MA-shapefiles
+        unzip MA_precincts_02_10.zip -d 02_10/ 
+        unzip MA_precincts_12_16.zip -d 12_16
+        cd ../../
         
     - name: Lint with flake8 and black
       run: |
@@ -53,6 +57,10 @@ jobs:
         python -m black --check .
     - name: Test with pytest
       run: |
+        echo $PWD
+        ls data/
+        ls data/MA-shapefiles/
+        ls data/MA-shapefiles/12_16/
         pytest --cov=./ --cov-config=.coveragerc
       env: # Or as an environment variable
         MONGO_DB_SERVER: ${{ secrets.MONGO_DB_SERVER }}
