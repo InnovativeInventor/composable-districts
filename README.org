@@ -1,7 +1,8 @@
 #+title: geocompose
 #+description: A library for representing geographical regions as a set of addresses. Intended for use in redistricting.
 
-
+#+caption: 
+[[file:https://github.com/InnovativeInventor/geocompose/workflows/Python%20testing%20and%20linting/badge.svg]]
 * Overview
 
 * Operations
