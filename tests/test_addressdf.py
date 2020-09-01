@@ -8,5 +8,5 @@ def test_init_cls():
 
     geocompose.read_files(
         "tests/data/city_of_boston-addresses-city.geojson",
-        "data/MA-shapefiles/12_16/MA_precincts_12_16.shp",
+        "data/MA-shapefiles/12_16/MA_precincts12_16.shp",
     )
