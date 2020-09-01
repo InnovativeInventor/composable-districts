@@ -1,5 +1,4 @@
 MA-shapefiles/
-data
 processed/*/
 *.shp
 *.dbf
