@@ -35,6 +35,7 @@ jobs:
         poetry export --dev -f requirements.txt > requirements.txt
         python -m pip install -r requirements.txt
 
+        mkdir data
         cd data
         git clone https://github.com/mggg-states/MA-shapefiles
         
