@@ -13,6 +13,9 @@
    1. The two addresses normalize to the same (or similar) string using libpostal
    2. The two addresses are geographically within 1 kilometer of each other
 
+** Chunking
+
+*** Decomposing and composing
 
 ** Diff Operation (from and address-based representation)
    The diff operation is intended primarily for visualization purposes.

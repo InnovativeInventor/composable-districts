@@ -1,1 +1,2 @@
-from geocompose.definitions import Address, Region, normalize
+from geocompose.definitions import normalize, Addresses
+from geocompose.read import read_files

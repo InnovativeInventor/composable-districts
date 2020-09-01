@@ -7,15 +7,15 @@ import itertools
 import glob
 
 
-def load():
-    """
-    Loads MA shapefile and address database
-    """
-    ma_addresses = geopandas.read_file(
-        "data/openaddresses/us/ma/statewide-addresses-state.geojson"
-    )
-    ma_shapefile = geopandas.read_file("MA-shapefiles/12_16/MA_precincts_12_16.shp")
-    return ma_addresses, ma_shapefile
+# def load():
+#     """
+#     Loads MA shapefile and address database
+#     """
+#     ma_addresses = geopandas.read_file(
+#         "../data/openaddresses/us/ma/statewide-addresses-state.geojson"
+#     )
+#     ma_shapefile = geopandas.read_file("../MA-shapefiles/12_16/MA_precincts_12_16.shp")
+#     return ma_addresses, ma_shapefile
 
 
 def decompose_addresses(addresses, input_tuple):
@@ -44,6 +44,7 @@ def decompose_addresses(addresses, input_tuple):
 
     possible_matches_index = list(addresses_index.intersection(geometry.bounds))
     possible_matches = addresses_df.iloc[possible_matches_index]
+    print(type(possible_matches), type(geometry))
     precise_matches = possible_matches[possible_matches.intersects(geometry)]
 
     return count, " ".join(precise_matches["hash"].tolist())
@@ -65,15 +66,16 @@ unchain = itertools.chain.from_iterable
 
 if __name__ == "__main__":
 
-    states = glob.glob("*-shapefiles/")
+    states = glob.glob("../data/*-shapefiles/")
+    print(states)
     for each_state in states:
         shapefiles = glob.glob(each_state + "*/*.shp")
-        state = each_state.split("-")[0].lower()
+        state = each_state.split("-")[0].lower().split("/")[-1]
         for each_shapefile in shapefiles:
             print("Using", each_shapefile)
 
             addresses = geopandas.read_file(
-                "data/openaddresses/us/{state}/statewide-addresses-state.geojson".format(
+                "../data/openaddresses/us/{state}/statewide-addresses-state.geojson".format(
                     state=state
                 )
             )
