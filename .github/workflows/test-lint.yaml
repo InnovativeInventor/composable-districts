@@ -28,7 +28,7 @@ jobs:
         make -j4
         sudo make install
         sudo ldconfig
-        cd ../geocompose
+        cd ../
 
     - name: Setup data
       run: |
@@ -37,9 +37,11 @@ jobs:
         poetry export --dev -f requirements.txt > requirements.txt
         python -m pip install -r requirements.txt
 
+        ls
         echo $PWD
         mkdir data
         cd data
+        echo $PWD
         git clone https://github.com/mggg-states/MA-shapefiles
         
     - name: Lint with flake8 and black
