@@ -1,8 +1,7 @@
-data/
 MA-shapefiles/
+data
 processed/*/
 *.shp
-*.geojson
 *.dbf
 *.gpkg
 *.shx
