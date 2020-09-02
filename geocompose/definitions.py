@@ -108,11 +108,21 @@ class Addresses:
             envelope=self.boarder,
         )
 
-    def export_dir(self, dirname: str, addresses="addresses", polygon="polygon"):
+    def export_dir(
+        self,
+        dirname: str,
+        addresses: str = "addresses",
+        polygon: str = "polygon",
+        diagram: str = "diagram",
+    ):
         """
         Exports current state to a directory
         """
-        for name, each_object in ((addresses, self.addresses), (polygon, self.polygon)):
+        for name, each_object in (
+            (addresses, self.addresses),
+            (polygon, self.polygon),
+            (diagram, self.diagram),
+        ):
             export(each_object, dirname + name)
 
     @staticmethod
