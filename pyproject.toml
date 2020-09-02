@@ -9,8 +9,8 @@ license = "MIT License"
 python = "^3.8"
 geopandas = "^0.8.1"
 pydantic = "^1.6.1"
-shapely = "^1.7.1"
 postal = "^1.1.9"
+shapely = {git = "https://github.com/Toblerity/Shapely.git"}
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.0.1"
