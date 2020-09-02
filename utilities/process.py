@@ -44,7 +44,7 @@ def decompose_addresses(addresses, input_tuple):
 
     possible_matches_index = list(addresses_index.intersection(geometry.bounds))
     possible_matches = addresses_df.iloc[possible_matches_index]
-    print(type(possible_matches), type(geometry))
+    # print(type(possible_matches), type(geometry))
     precise_matches = possible_matches[possible_matches.intersects(geometry)]
 
     return count, " ".join(precise_matches["hash"].tolist())
@@ -56,7 +56,7 @@ def fold(shapefile, input_tuple):
     """
     count, contains = input_tuple
 
-    print(contains)
+    # print(contains)
     shapefile.at[count, "addresses"] = contains
 
     return shapefile
@@ -101,7 +101,7 @@ if __name__ == "__main__":
             filename = each_shapefile.split("/")[-1].split(".")[0]
             try:
                 shapefile.to_file(
-                    "processed/{state}/{filename}.geojson".format(
+                    "../processed/{state}/{filename}.geojson".format(
                         filename=filename, state=state
                     ),
                     driver="GeoJSON",
@@ -111,7 +111,7 @@ if __name__ == "__main__":
 
             try:
                 shapefile.to_file(
-                    "processed/{state}/{filename}.shp".format(
+                    "../processed/{state}/{filename}.shp".format(
                         filename=filename, state=state
                     )
                 )
@@ -120,7 +120,7 @@ if __name__ == "__main__":
 
             try:
                 shapefile.to_file(
-                    "processed/{state}/{filename}.gpkg".format(
+                    "../processed/{state}/{filename}.gpkg".format(
                         filename=filename, state=state
                     ),
                     layer="districts",

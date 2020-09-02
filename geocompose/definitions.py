@@ -86,6 +86,9 @@ class Addresses:
         self.polygon = polygon_given
         self.addresses = addresses_given
 
+        # self.polygon_index = polygon_given.sindex
+        self.addresses_index = self.addresses.sindex
+
         # self.boarders = shapely.ops.unary_union([x["geometry"] for _,x in self.polygon.iterrows()])
         self.boarder = shapely.ops.unary_union(list(get_geometry(self.polygon)))
 

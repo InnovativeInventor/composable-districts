@@ -1,7 +1,7 @@
 import geopandas
 
 
-def export(self, dataframe: geopandas.GeoDataFrame, location: str) -> bool:
+def export(dataframe: geopandas.GeoDataFrame, location: str) -> bool:
     """
     Exports a GeoDataFrame to a folder in various formats
     """

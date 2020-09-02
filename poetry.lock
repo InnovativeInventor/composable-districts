@@ -271,6 +271,21 @@ version = "2020.1"
 
 [[package]]
 category = "main"
+description = "R-Tree spatial index for Python GIS"
+name = "rtree"
+optional = false
+python-versions = "*"
+version = "0.9.4"
+
+[package.dependencies]
+setuptools = "*"
+
+[package.extras]
+all = ["numpy", "pytest-cov", "pytest (>=3)"]
+test = ["pytest (>=3)", "pytest-cov", "numpy"]
+
+[[package]]
+category = "main"
 description = "Geometric objects, predicates, and operations"
 name = "Shapely"
 optional = false
@@ -286,6 +301,7 @@ vectorized = ["numpy"]
 reference = "0e1413ffff281c980ef711d29780cd6f170d8574"
 type = "git"
 url = "https://github.com/Toblerity/Shapely.git"
+
 [[package]]
 category = "main"
 description = "Python 2 and 3 compatibility utilities"
@@ -303,7 +319,7 @@ python-versions = "*"
 version = "0.10.1"
 
 [metadata]
-content-hash = "ac1884c026dacc3b2d4b4105180488ec77f2bf9ec059f81015a3a8d31aaf67e0"
+content-hash = "735486a5885e72ecd16f0421fe664a0637e1cd8dcc3699a210ed4d427728725d"
 lock-version = "1.0"
 python-versions = "^3.8"
 
@@ -482,6 +498,9 @@ python-dateutil = [
 pytz = [
     {file = "pytz-2020.1-py2.py3-none-any.whl", hash = "sha256:a494d53b6d39c3c6e44c3bec237336e14305e4f29bbf800b599253057fbb79ed"},
     {file = "pytz-2020.1.tar.gz", hash = "sha256:c35965d010ce31b23eeb663ed3cc8c906275d6be1a34393a1d73a41febf4a048"},
+]
+rtree = [
+    {file = "Rtree-0.9.4.tar.gz", hash = "sha256:cae327e2c03b3da4ea40d0fdf68f3e55fe9f302c56b9f31e1bfeb36dbea73f44"},
 ]
 Shapely = []
 six = [

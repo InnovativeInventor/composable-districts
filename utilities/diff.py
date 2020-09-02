@@ -6,7 +6,8 @@ import geopandas
 import pandas as pd
 import shapely
 import tqdm
-from process import decompose_addresses
+
+# from process import decompose_addresses
 
 """
 A simple diff utility on the address-based representation of precincts.
@@ -83,7 +84,10 @@ def find_intersect(shapefile_2, shapefile_2_index, each_precinct_1):
     ]
 
     for count, each_precinct_2 in precise_matches.iterrows():
-        addresses_2 = set(each_precinct_2["addresses"].split())
+        try:
+            addresses_2 = set(each_precinct_2["addresses"].split())
+        except:
+            print(each_precinct_2)
 
         address_difference = addresses_1 - addresses_2
         if address_difference:
