@@ -92,7 +92,7 @@ class Addresses:
         # self.boarders = shapely.ops.unary_union([x["geometry"] for _,x in self.polygon.iterrows()])
         self.boarder = shapely.ops.unary_union(list(get_geometry(self.polygon)))
 
-        self.diagram = self.generate_diagram()
+        self.diagram = self.generate_diagram()  # turn off in prod
 
     def __add__(self, other):
         """
@@ -105,11 +105,25 @@ class Addresses:
         )
 
     def generate_diagram(self):
+        """
+        Generates a Voronoi diagram.
+        """
         # return shapely.ops.voronoi_diagram(shapely.geometry.asMultiPoint(list(get_geometry(self.addresses))), envelope=self.boarder)
-        return shapely.ops.voronoi_diagram(
+        diagram: shapely.geometry.collection.GeometryCollection = shapely.ops.voronoi_diagram(
             shapely.geometry.MultiPoint(list(get_geometry(self.addresses))),
             envelope=self.boarder,
         )
+
+        # districts = self.polygon.copy(deep=True)
+        # districts["geometry"] = diagram.geoms
+
+        # return districts
+        return geopandas.GeoDataFrame(list(diagram))
+
+    def generate_dual(self):
+        """
+        Generates the Delaunay triangulation (the dual of the Voronoi diagram).
+        """
 
     def export_dir(
         self,
@@ -121,6 +135,9 @@ class Addresses:
         """
         Exports current state to a directory
         """
+        if not dirname.endswith("/"):
+            dirname += "/"
+
         for name, each_object in (
             (addresses, self.addresses),
             (polygon, self.polygon),

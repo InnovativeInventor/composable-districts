@@ -17,5 +17,6 @@ def test_export(tmpdir):
         "tests/data/city_of_boston-addresses-city.geojson",
         "data/MA-shapefiles/12_16/MA_precincts12_16.shp",
     )
-    representation.export_dir(tmpdir)
+    print(tmpdir)
+    representation.export_dir(str(tmpdir))
     assert len(tmpdir.listdir()) > 1

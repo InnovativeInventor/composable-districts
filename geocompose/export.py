@@ -3,8 +3,9 @@ import geopandas
 
 def export(dataframe: geopandas.GeoDataFrame, location: str) -> bool:
     """
-    Exports a GeoDataFrame to a folder in various formats
+    Exports a GeoDataFrame to a folder in various formats the location of the dir does not have to contain a trailing slash
     """
+    # print(location)
     success = True
     try:
         dataframe.to_file(location + ".geojson", driver="GeoJSON")
