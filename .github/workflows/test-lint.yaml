@@ -16,9 +16,9 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install libpostal
+    - name: Install libpostal and deps
       run: |
-        sudo apt-get install curl autoconf automake libtool pkg-config
+        sudo apt-get install curl autoconf automake libtool pkg-config libspatialindex-dev
         cd ../
         git clone https://github.com/openvenues/libpostal
         cd libpostal
