@@ -7,6 +7,8 @@
 [[file:https://codecov.io/gh/InnovativeInventor/geocompose/branch/master/graph/badge.svg]]
 
 * Overview
+  Geocompose is an implementation of an address-based presentation of geographical regions (e.g. voter precincts or districts).
+
 
 * Operations
 

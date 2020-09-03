@@ -124,6 +124,7 @@ class Addresses:
         """
         Generates the Delaunay triangulation (the dual of the Voronoi diagram).
         """
+        pass
 
     def export_dir(
         self,

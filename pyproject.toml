@@ -12,6 +12,7 @@ pydantic = "^1.6.1"
 postal = "^1.1.9"
 shapely = {git = "https://github.com/Toblerity/Shapely.git"}
 rtree = "^0.9.4"
+setuptools = "^50.0.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.0.1"
