@@ -33,7 +33,7 @@ jobs:
     - name: Setup data
       run: |
         python3 -m pip install --upgrade pip
-        python3 -m pip install flake8 pytest pytest-cov black poetry setuptools
+        python3 -m pip install poetry setuptools
         poetry install
         poetry run pip install git+https://github.com/Toblerity/Shapely.git
 
