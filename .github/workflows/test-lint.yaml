@@ -35,6 +35,7 @@ jobs:
         python3 -m pip install --upgrade pip
         python3 -m pip install flake8 pytest pytest-cov black poetry setuptools
         poetry install
+        poetry run pip install git+https://github.com/Toblerity/Shapely.git
 
         ls
         echo $PWD

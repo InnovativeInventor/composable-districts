@@ -9,6 +9,15 @@
 * Overview
   Geocompose is an implementation of an address-based presentation of geographical regions (e.g. voter precincts or districts).
 
+* Install
+  To install, run:
+  
+ #+begin_src bash
+   poetry install
+   pip install git+https://github.com/Toblerity/Shapely.git
+ #+end_src 
+  
+ Currently, this depends on Shapely 1.8, which isn't out yet (which is why we build from master).
 
 * Operations
 
