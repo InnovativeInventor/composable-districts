@@ -34,8 +34,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest pytest-cov black poetry
-        poetry export --dev -f requirements.txt > requirements.txt
-        python -m pip install -r requirements.txt
+        poetry install
 
         ls
         echo $PWD
@@ -51,17 +50,17 @@ jobs:
     - name: Lint with flake8 and black
       run: |
         # stop the build if there are Python syntax errors or undefined names
-        python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        poetry run python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        python -m flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-        python -m black --check .
+        poetry run python -m flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        poetry run python -m black --check .
     - name: Test with pytest
       run: |
         echo $PWD
         ls data/
         ls data/MA-shapefiles/
         ls data/MA-shapefiles/12_16/
-        pytest --cov=./ --cov-config=.coveragerc
+        poetry run pytest --cov=./ --cov-config=.coveragerc
       env: # Or as an environment variable
         MONGO_DB_SERVER: ${{ secrets.MONGO_DB_SERVER }}
     - name: Upload results to codecov
