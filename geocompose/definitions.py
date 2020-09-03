@@ -109,9 +109,11 @@ class Addresses:
         Generates a Voronoi diagram.
         """
         # return shapely.ops.voronoi_diagram(shapely.geometry.asMultiPoint(list(get_geometry(self.addresses))), envelope=self.boarder)
-        diagram: shapely.geometry.collection.GeometryCollection = shapely.ops.voronoi_diagram(
-            shapely.geometry.MultiPoint(list(get_geometry(self.addresses))),
-            envelope=self.boarder,
+        diagram: shapely.geometry.collection.GeometryCollection = (
+            shapely.ops.voronoi_diagram(
+                shapely.geometry.MultiPoint(list(get_geometry(self.addresses))),
+                envelope=self.boarder,
+            )
         )
 
         # districts = self.polygon.copy(deep=True)
