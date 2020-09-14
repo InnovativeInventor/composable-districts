@@ -67,7 +67,9 @@ unchain = itertools.chain.from_iterable
 if __name__ == "__main__":
 
     states = glob.glob("../data/*-shapefiles/")
-    print(states)
+    if not states:  # look for shapefiles in alternate dir
+        states = glob.glob("data/*-shapefiles/")
+
     for each_state in states:
         shapefiles = glob.glob(each_state + "*/*.shp")
         state = each_state.split("-")[0].lower().split("/")[-1]
@@ -75,7 +77,7 @@ if __name__ == "__main__":
             print("Using", each_shapefile)
 
             addresses = geopandas.read_file(
-                "../data/openaddresses/us/{state}/statewide-addresses-state.geojson".format(
+                "data/openaddresses/us/{state}/statewide-addresses-state.geojson".format(
                     state=state
                 )
             )
@@ -101,7 +103,7 @@ if __name__ == "__main__":
             filename = each_shapefile.split("/")[-1].split(".")[0]
             try:
                 shapefile.to_file(
-                    "../processed/{state}/{filename}.geojson".format(
+                    "processed/{state}/{filename}.geojson".format(
                         filename=filename, state=state
                     ),
                     driver="GeoJSON",
@@ -111,7 +113,7 @@ if __name__ == "__main__":
 
             try:
                 shapefile.to_file(
-                    "../processed/{state}/{filename}.shp".format(
+                    "processed/{state}/{filename}.shp".format(
                         filename=filename, state=state
                     )
                 )
@@ -120,7 +122,7 @@ if __name__ == "__main__":
 
             try:
                 shapefile.to_file(
-                    "../processed/{state}/{filename}.gpkg".format(
+                    "processed/{state}/{filename}.gpkg".format(
                         filename=filename, state=state
                     ),
                     layer="districts",

@@ -73,78 +73,87 @@ def calculate_diffs(shapefile_1, shapefile_2):
 
 
 def find_intersect(shapefile_2, shapefile_2_index, each_precinct_1):
-    addresses_1 = set(each_precinct_1["addresses"].split())
+    try:
+        addresses_1 = set(each_precinct_1["addresses"].split())
 
-    possible_matches_index = list(
-        shapefile_2_index.intersection(each_precinct_1["geometry"].bounds)
-    )
-    possible_matches = shapefile_2.iloc[possible_matches_index]
-    precise_matches = possible_matches[
-        possible_matches.intersects(each_precinct_1["geometry"])
-    ]
+        possible_matches_index = list(
+            shapefile_2_index.intersection(each_precinct_1["geometry"].bounds)
+        )
+        possible_matches = shapefile_2.iloc[possible_matches_index]
+        precise_matches = possible_matches[
+            possible_matches.intersects(each_precinct_1["geometry"])
+        ]
 
-    for count, each_precinct_2 in precise_matches.iterrows():
-        try:
-            addresses_2 = set(each_precinct_2["addresses"].split())
-        except:
-            print(each_precinct_2)
-
-        address_difference = addresses_1 - addresses_2
-        if address_difference:
+        for count, each_precinct_2 in precise_matches.iterrows():
             try:
-                intersection = each_precinct_1["geometry"].intersection(
-                    each_precinct_2["geometry"]
-                )
+                addresses_2 = set(each_precinct_2["addresses"].split())
+            except:
+                print(each_precinct_2)
+                continue
 
-                if each_precinct_1["geometry"].contains(each_precinct_2["geometry"]):
-                    intersection = each_precinct_1["geometry"].symmetric_difference(
-                        each_precinct_2["geometry"]
-                    )
-                elif each_precinct_2["geometry"].contains(each_precinct_1["geometry"]):
-                    intersection = each_precinct_1["geometry"].symmetric_difference(
-                        each_precinct_2["geometry"]
-                    )
-                elif (
-                    intersection.area > each_precinct_1["geometry"].area * 0.5
-                ):  # could use addresses as a heuristic instead
-                    # this happens when there are two nearly identical districts and we just want to get the extras as opposed to the intersection
-                    intersection = each_precinct_1["geometry"].symmetric_difference(
+            address_difference = addresses_1 - addresses_2
+            if address_difference:
+                try:
+                    intersection = each_precinct_1["geometry"].intersection(
                         each_precinct_2["geometry"]
                     )
 
-                row = each_precinct_1.to_dict()
-                row["diff_address"] = " ".join(address_difference)
-                # row["current_geometry"] = each_precinct_1["geometry"] # is this the source of the write to disk errors?
-                # row["original_geometry"] = each_precinct_2["geometry"]
+                    if each_precinct_1["geometry"].contains(
+                        each_precinct_2["geometry"]
+                    ):
+                        intersection = each_precinct_1["geometry"].symmetric_difference(
+                            each_precinct_2["geometry"]
+                        )
+                    elif each_precinct_2["geometry"].contains(
+                        each_precinct_1["geometry"]
+                    ):
+                        intersection = each_precinct_1["geometry"].symmetric_difference(
+                            each_precinct_2["geometry"]
+                        )
+                    elif (
+                        intersection.area > each_precinct_1["geometry"].area * 0.5
+                    ):  # could use addresses as a heuristic instead
+                        # this happens when there are two nearly identical districts and we just want to get the extras as opposed to the intersection
+                        intersection = each_precinct_1["geometry"].symmetric_difference(
+                            each_precinct_2["geometry"]
+                        )
 
-                # # Slower method, not necessary but could be useful in theory
-                # for each_polygon in contains_addresses(
-                #     chain_until(
-                #         shapely.geometry.polygon.Polygon,
-                #         (
-                #             shapely.geometry.point.Point,
-                #             shapely.geometry.linestring.LineString,
-                #         ),
-                #         intersection,
-                #     )
-                # ):
-                for each_polygon in chain_until(
-                    shapely.geometry.polygon.Polygon,
-                    (
-                        shapely.geometry.point.Point,
-                        shapely.geometry.linestring.LineString,
-                    ),
-                    intersection,
-                ):
-                    # for each_polygon in chain_until(shapely.geometry.polygon.Polygon,() , intersection):
-                    assert isinstance(
-                        each_polygon, shapely.geometry.polygon.Polygon
-                    )  # otherwise there is a problem with writing to disk
-                    row["geometry"] = each_polygon
-                    yield geopandas.GeoSeries(row)
+                    row = each_precinct_1.to_dict()
+                    row["diff_address"] = " ".join(address_difference)
+                    # row["current_geometry"] = each_precinct_1["geometry"] # is this the source of the write to disk errors?
+                    # row["original_geometry"] = each_precinct_2["geometry"]
 
-            except shapely.errors.TopologicalError as e:
-                print("WARNING", e)
+                    # # Slower method, not necessary but could be useful in theory
+                    # for each_polygon in contains_addresses(
+                    #     chain_until(
+                    #         shapely.geometry.polygon.Polygon,
+                    #         (
+                    #             shapely.geometry.point.Point,
+                    #             shapely.geometry.linestring.LineString,
+                    #         ),
+                    #         intersection,
+                    #     )
+                    # ):
+                    for each_polygon in chain_until(
+                        shapely.geometry.polygon.Polygon,
+                        (
+                            shapely.geometry.point.Point,
+                            shapely.geometry.linestring.LineString,
+                        ),
+                        intersection,
+                    ):
+                        # for each_polygon in chain_until(shapely.geometry.polygon.Polygon,() , intersection):
+                        assert isinstance(
+                            each_polygon, shapely.geometry.polygon.Polygon
+                        )  # otherwise there is a problem with writing to disk
+                        row["geometry"] = each_polygon
+                        yield geopandas.GeoSeries(row)
+
+                except shapely.errors.TopologicalError as e:
+                    print("WARNING", e)
+    except AttributeError as e:
+        print(e)
+        print(each_precinct_1)
 
 
 if __name__ == "__main__":

@@ -1,65 +1,25 @@
 from typing import Set, Iterable, Optional
 from pydantic import BaseModel, validator, ValidationError
 import shapely.geometry
+import tqdm
 
 # from postal.expand import expand_address as normalize
 from postal.normalize import normalize_string as normalize
 from geocompose.export import export
 from postal.parser import parse_address
+from shapely.validation import make_valid
 from pydantic.dataclasses import dataclass
 import geopandas
 import pandas
 from postal.near_dupe import near_dupe_hashes
+import geocompose.auxiliary as auxiliary
 
 
-def unzip(tuple_iterable):
-    """
-    Inverse of the Python builtin zip function
-    """
+# def get_geometry(dataframe: geopandas.GeoDataFrame):
+#     for _, x in dataframe.iterrows():
+#         yield x["geometry"]
 
-    def fst(tuple_iterable):
-        for x, _ in tuple_iterable:
-            yield x
-
-    def snd(tuple_iterable):
-        for _, y in tuple_iterable:
-            yield y
-
-    return fst(tuple_iterable), snd(tuple_iterable)
-
-
-def address_map(input_tuple):
-    """
-    TODO: Convert to using pandas-native operations and avoid casting to dict
-    """
-    count, address = input_tuple
-    address_dict = address.to_dict()
-    del address_dict["hash"]
-    del address_dict["geometry"]
-
-    keys = []
-    values = []
-
-    for key in address_dict:
-        if value := address_dict[key]:
-            keys.append(key)
-            # print(value)
-            values.append(value)
-
-    return keys, values
-    # return (address_dict.keys(), address_dict.values())
-
-
-def concat_gdf(*args):
-    """
-    Concatenates an arbitrary number of GeoDataFrames
-    """
-    return geopandas.GeoDataFrame(pandas.concat([*args], ignore_index=True))
-
-
-def get_geometry(dataframe: geopandas.GeoDataFrame):
-    for _, x in dataframe.iterrows():
-        yield x["geometry"]
+# make_valid = lambda x: x # placeholder
 
 
 class Addresses:
@@ -75,6 +35,7 @@ class Addresses:
         self,
         addresses_given: geopandas.GeoDataFrame,
         polygon_given: geopandas.GeoDataFrame,
+        generate=True,
     ):
         # self.polygon = geopandas.GeoDataFrame(*args, **kwargs)
 
@@ -86,13 +47,21 @@ class Addresses:
         self.polygon = polygon_given
         self.addresses = addresses_given
 
-        # self.polygon_index = polygon_given.sindex
+        self.polygon_index = polygon_given.sindex
         self.addresses_index = self.addresses.sindex
 
         # self.boarders = shapely.ops.unary_union([x["geometry"] for _,x in self.polygon.iterrows()])
-        self.boarder = shapely.ops.unary_union(list(get_geometry(self.polygon)))
+        self.union = make_valid(shapely.ops.unary_union(self.polygon["geometry"]))
+        self.union_index = geopandas.GeoDataFrame(
+            self.union, columns=["geometry"]
+        ).sindex
 
-        self.diagram = self.generate_diagram()  # turn off in prod
+        self.boarder = auxiliary.find_boarder(self.union)
+        self.boarder_index = self.boarder.sindex
+
+        if generate:
+            # self.boarder_hull = make_valid(shapely.ops.unary_union(self.polygon["geometry"])).convex_hull
+            self.diagram = self.generate_diagram()  # turn off in prod
 
     def __add__(self, other):
         """
@@ -100,27 +69,60 @@ class Addresses:
         TODO: Do smart deduplication using merge_addresses.
         """
         return Addresses(
-            concat_gdf(self.addresses, other.addresses),
-            concat_gdf(self.polygon, other.polygon),
+            auxiliary.concat_gdf(self.addresses, other.addresses),
+            auxiliary.concat_gdf(self.polygon, other.polygon),
         )
 
     def generate_diagram(self):
         """
         Generates a Voronoi diagram.
+
+        TODO: Find speedups
         """
-        # return shapely.ops.voronoi_diagram(shapely.geometry.asMultiPoint(list(get_geometry(self.addresses))), envelope=self.boarder)
-        diagram: shapely.geometry.collection.GeometryCollection = (
+        diagram: shapely.geometry.collection.GeometryCollection = make_valid(
             shapely.ops.voronoi_diagram(
-                shapely.geometry.MultiPoint(list(get_geometry(self.addresses))),
-                envelope=self.boarder,
+                shapely.geometry.MultiPoint(self.addresses["geometry"])
             )
         )
 
-        # districts = self.polygon.copy(deep=True)
+        diagram_gdf = geopandas.GeoDataFrame(diagram.geoms, columns=["geometry"])
+        print(diagram_gdf)
+        print(diagram_gdf["geometry"].bounds)
+
+        # possible_matches_index = [count for count, cell in diagram_gdf.iterrows() if self.boarder_index.intersection(cell["geometry"].bounds)]
+        possible_matches = [
+            (count, cell)
+            for count, cell in diagram_gdf.iterrows()
+            if not self.polygon_index.contains(cell["geometry"].bounds)
+        ]
+        # possible_matches = [(count, cell) for count, cell in diagram_gdf.iterrows() if not self.boarder_index.intersects(cell["geometry"].bounds)]
+
+        # precise_matches = [(count, cell) for count, cell in possible_matches if cell["geometry"].intersects(self.union)]
+
+        for count, cell in tqdm.tqdm(possible_matches):
+            # for count, cell in tqdm.tqdm(precise_matches):
+            if cropped := cell["geometry"].intersection(self.union):
+                cropped_valid = make_valid(cropped).buffer(0)
+                assert isinstance(cropped_valid, shapely.geometry.polygon.Polygon)
+                print("cropped_valid", cropped_valid)  # debug
+
+                diagram_gdf.iloc[count] = cropped_valid
+        return diagram_gdf
+
+        # diagram_clipped = make_valid(diagram).intersection(self.boarder).buffer(0)
+
+        # districts = self.addresses.copy(deep=True)
         # districts["geometry"] = diagram.geoms
 
-        # return districts
-        return geopandas.GeoDataFrame(list(diagram))
+        # Option 1
+        # districts = []
+        # for each_geom in diagram_clipped.geoms:
+        #     districts.append({"geometry": each_geom})
+
+        # return geopandas.GeoDataFrame(districts)
+
+        # Option 2
+        # return geopandas.GeoDataFrame(diagram_clipped.geoms, columns = ["geometry"])
 
     def generate_dual(self):
         """
@@ -134,6 +136,7 @@ class Addresses:
         addresses: str = "addresses",
         polygon: str = "polygon",
         diagram: str = "diagram",
+        boarder: str = "boarder",
     ):
         """
         Exports current state to a directory
@@ -144,9 +147,14 @@ class Addresses:
         for name, each_object in (
             (addresses, self.addresses),
             (polygon, self.polygon),
+            (boarder, self.boarder),
             (diagram, self.diagram),
         ):
-            export(each_object, dirname + name)
+            print("Export", name, each_object)  # debug
+            try:
+                export(each_object, dirname + name)
+            except RuntimeError as e:
+                print("Error", e)
 
     @staticmethod
     def merge_addresses(
@@ -168,6 +176,7 @@ class Addresses:
         values_1 = []
         labels_2 = []
         values_2 = []
+
         for address_1, address_2 in zip(addresses_1.iterrows(), addresses_2.iterrows()):
             _, address_1 = address_1
             _, address_2 = address_2
