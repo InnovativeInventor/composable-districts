@@ -86,6 +86,9 @@ class Addresses:
         )
 
         diagram_gdf = geopandas.GeoDataFrame(diagram.geoms, columns=["geometry"])
+        self.diagram_unfiltered = geopandas.GeoDataFrame(
+            diagram.geoms, columns=["geometry"]
+        )  # debug
         print(diagram_gdf)
         print(diagram_gdf["geometry"].bounds)
 
@@ -93,7 +96,9 @@ class Addresses:
         possible_matches = [
             (count, cell)
             for count, cell in diagram_gdf.iterrows()
-            if not self.polygon_index.contains(cell["geometry"].bounds)
+            # if not self.polygon_index.contains(cell["geometry"].bounds)
+            if not self.boarder_index.contains(cell["geometry"].bounds)
+            # if self.boarder_index.intersection(cell["geometry"].bounds)
         ]
         # possible_matches = [(count, cell) for count, cell in diagram_gdf.iterrows() if not self.boarder_index.intersects(cell["geometry"].bounds)]
 
@@ -104,7 +109,7 @@ class Addresses:
             if cropped := cell["geometry"].intersection(self.union):
                 cropped_valid = make_valid(cropped).buffer(0)
                 assert isinstance(cropped_valid, shapely.geometry.polygon.Polygon)
-                print("cropped_valid", cropped_valid)  # debug
+                # print("cropped_valid", cropped_valid)  # debug
 
                 diagram_gdf.iloc[count] = cropped_valid
         return diagram_gdf
@@ -147,8 +152,9 @@ class Addresses:
         for name, each_object in (
             (addresses, self.addresses),
             (polygon, self.polygon),
-            (boarder, self.boarder),
+            # (boarder, self.boarder),
             (diagram, self.diagram),
+            ("diagram_filtered", self.diagram_unfiltered),
         ):
             print("Export", name, each_object)  # debug
             try:
