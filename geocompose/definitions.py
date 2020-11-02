@@ -1,19 +1,21 @@
-from typing import Set, Iterable, Optional
-from pydantic import BaseModel, validator, ValidationError
+from typing import Iterable, Optional, Set
+
+import geopandas
+import numpy as np
+import pandas
 import shapely.geometry
 import tqdm
+from postal.near_dupe import near_dupe_hashes
 
 # from postal.expand import expand_address as normalize
 from postal.normalize import normalize_string as normalize
-from geocompose.export import export
 from postal.parser import parse_address
-from shapely.validation import make_valid
+from pydantic import BaseModel, ValidationError, validator
 from pydantic.dataclasses import dataclass
-import geopandas
-import pandas
-from postal.near_dupe import near_dupe_hashes
-import geocompose.auxiliary as auxiliary
+from shapely.validation import make_valid
 
+import geocompose.auxiliary as auxiliary
+from geocompose.export import export
 
 # def get_geometry(dataframe: geopandas.GeoDataFrame):
 #     for _, x in dataframe.iterrows():
@@ -66,6 +68,7 @@ class Addresses:
     def __add__(self, other):
         """
         Currently just concatenates the addresses and the polygon GeoDataFrames.
+
         TODO: Do smart deduplication using merge_addresses.
         """
         return Addresses(
@@ -79,10 +82,14 @@ class Addresses:
 
         TODO: Find speedups
         """
-        diagram: shapely.geometry.collection.GeometryCollection = make_valid(
-            shapely.ops.voronoi_diagram(
-                shapely.geometry.MultiPoint(self.addresses["geometry"])
-            )
+        # diagram: shapely.geometry.collection.GeometryCollection = make_valid( # breaks
+        #     shapely.ops.voronoi_diagram(
+        #         shapely.geometry.MultiPoint(self.addresses["geometry"])
+        #     )
+        # )
+
+        diagram: shapely.geometry.collection.GeometryCollection = shapely.ops.voronoi_diagram(
+            shapely.geometry.MultiPoint(self.addresses["geometry"])
         )
 
         diagram_gdf = geopandas.GeoDataFrame(diagram.geoms, columns=["geometry"])
@@ -91,28 +98,61 @@ class Addresses:
         )  # debug
         print(diagram_gdf)
         print(diagram_gdf["geometry"].bounds)
+        print(self.boarder_index)
 
         # possible_matches_index = [count for count, cell in diagram_gdf.iterrows() if self.boarder_index.intersection(cell["geometry"].bounds)]
-        possible_matches = [
-            (count, cell)
-            for count, cell in diagram_gdf.iterrows()
-            # if not self.polygon_index.contains(cell["geometry"].bounds)
-            if not self.boarder_index.contains(cell["geometry"].bounds)
-            # if self.boarder_index.intersection(cell["geometry"].bounds)
-        ]
+        # possible_matches = [
+        #     (count, cell)
+        #     for count, cell in tqdm.tqdm(diagram_gdf.iterrows())
+        #     if self.polygon_index.contains(cell["geometry"].bounds) #0
+        #     # if self.addresses_index.contains(cell["geometry"].bounds) #1
+        #     # if self.boarder_index.contains(cell["geometry"].bounds) #2 # out of order, still running
+        #     # if cell["geometry"].bounds.intersection(self.boarder) #3 # to delete
+        #     # if self.boarder_index.crosses(cell["geometry"])
+        # ]
+        possible_matches = self.boarder_index.intersection(
+            np.array([x.bounds for x in diagram_gdf["geometry"]])
+        )
+
         # possible_matches = [(count, cell) for count, cell in diagram_gdf.iterrows() if not self.boarder_index.intersects(cell["geometry"].bounds)]
 
         # precise_matches = [(count, cell) for count, cell in possible_matches if cell["geometry"].intersects(self.union)]
+        starting_size = len(diagram_gdf)
+        print(starting_size)
 
-        for count, cell in tqdm.tqdm(possible_matches):
+        diagram_filtered = geopandas.GeoDataFrame()
+        for count in tqdm.tqdm(possible_matches):
             # for count, cell in tqdm.tqdm(precise_matches):
-            if cropped := cell["geometry"].intersection(self.union):
-                cropped_valid = make_valid(cropped).buffer(0)
-                assert isinstance(cropped_valid, shapely.geometry.polygon.Polygon)
-                # print("cropped_valid", cropped_valid)  # debug
+            cropped_valid = make_valid(
+                diagram_gdf.iloc[count].intersection(self.union)
+            ).buffer(0)
+            assert isinstance(cropped_valid, shapely.geometry.polygon.Polygon)
+            # print("cropped_valid", cropped_valid)  # debug
 
-                diagram_gdf.iloc[count] = cropped_valid
-        return diagram_gdf
+            diagram_gdf.iloc[count] = cropped_valid
+
+        # for count, cell in tqdm.tqdm(possible_matches):
+        #     # for count, cell in tqdm.tqdm(precise_matches):
+        #     if cropped := cell["geometry"].intersection(self.union):
+        #         cropped_valid = make_valid(cropped).buffer(0)
+        #         assert isinstance(cropped_valid, shapely.geometry.polygon.Polygon)
+        #         # print("cropped_valid", cropped_valid)  # debug
+
+        #         diagram_gdf.iloc[count] = cropped_valid
+
+        # for count in range(len(possible_matches), len(diagram_gdf)):
+        #         del diagram_gdf.iloc[count] # remove if not necessary
+
+        # return diagram_gdf
+        print(
+            "Sizes!: ",
+            len(possible_matches),
+            len(diagram_filtered),
+            len(diagram_gdf),
+            "Starting size",
+            starting_size,
+        )
+        return diagram_filtered
 
         # diagram_clipped = make_valid(diagram).intersection(self.boarder).buffer(0)
 
