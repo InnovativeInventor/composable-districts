@@ -1,8 +1,9 @@
-from typing import Iterable, Optional, Set
+from typing import Iterable, Optional, Set, Tuple
 
 import geopandas
 import numpy as np
 import pandas
+import pydantic
 import shapely.geometry
 import tqdm
 from postal.near_dupe import near_dupe_hashes
@@ -22,6 +23,25 @@ from geocompose.export import export
 #         yield x["geometry"]
 
 # make_valid = lambda x: x # placeholder
+
+
+class HashableEdge(pydantic.BaseModel):
+    """
+    A HashableEdge class is composed of tuples and 
+    """
+
+    edge: Tuple[Tuple[int, int], Tuple[int, int]]
+    id: int
+
+    def __hash__(self):
+        # return hash(((min(self.edge), max(self.edge)), self.id))
+        return hash(self.id)
+        # return hash((self.edge, self.id))
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    #     return ((self.edge == other.edge) or (self.edge == tuple(reversed(other.edge)))) and self.id == other.id
 
 
 class Addresses:
@@ -51,18 +71,20 @@ class Addresses:
 
         self.polygon_index = polygon_given.sindex
         self.addresses_index = self.addresses.sindex
+        self.adjacency_map = {}
 
-        # self.boarders = shapely.ops.unary_union([x["geometry"] for _,x in self.polygon.iterrows()])
-        self.union = make_valid(shapely.ops.unary_union(self.polygon["geometry"]))
+        # self.borders = shapely.ops.unary_union([x["geometry"] for _,x in self.polygon.iterrows()])
+        # self.union = make_valid(shapely.ops.unary_union(self.polygon["geometry"]))
+        self.union = shapely.ops.unary_union(self.polygon["geometry"])
         self.union_index = geopandas.GeoDataFrame(
             self.union, columns=["geometry"]
         ).sindex
 
-        self.boarder = auxiliary.find_boarder(self.union)
-        self.boarder_index = self.boarder.sindex
+        self.border = auxiliary.find_border(self.union)
+        self.border_index = self.border.sindex
 
         if generate:
-            # self.boarder_hull = make_valid(shapely.ops.unary_union(self.polygon["geometry"])).convex_hull
+            # self.border_hull = make_valid(shapely.ops.unary_union(self.polygon["geometry"])).convex_hull
             self.diagram = self.generate_diagram()  # turn off in prod
 
     def __add__(self, other):
@@ -82,92 +104,135 @@ class Addresses:
 
         TODO: Find speedups
         """
-        # diagram: shapely.geometry.collection.GeometryCollection = make_valid( # breaks
-        #     shapely.ops.voronoi_diagram(
-        #         shapely.geometry.MultiPoint(self.addresses["geometry"])
-        #     )
-        # )
-
         diagram: shapely.geometry.collection.GeometryCollection = shapely.ops.voronoi_diagram(
-            shapely.geometry.MultiPoint(self.addresses["geometry"])
+            shapely.geometry.MultiPoint(self.addresses["geometry"]), envelope=self.union
         )
 
         diagram_gdf = geopandas.GeoDataFrame(diagram.geoms, columns=["geometry"])
-        self.diagram_unfiltered = geopandas.GeoDataFrame(
-            diagram.geoms, columns=["geometry"]
-        )  # debug
-        print(diagram_gdf)
-        print(diagram_gdf["geometry"].bounds)
-        print(self.boarder_index)
+        self.diagram_unfiltered = diagram_gdf.copy()
+        for count, cell in tqdm.tqdm(diagram_gdf.iterrows(), total=len(diagram_gdf)):
+            # print(type(cell), len(cell)) # len always one
+            for polygon in cell:
+                for line in auxiliary.find_polygon_border(polygon):  # tuple
+                    reversed_line = tuple(reversed(line))
 
-        # possible_matches_index = [count for count, cell in diagram_gdf.iterrows() if self.boarder_index.intersection(cell["geometry"].bounds)]
-        # possible_matches = [
-        #     (count, cell)
-        #     for count, cell in tqdm.tqdm(diagram_gdf.iterrows())
-        #     if self.polygon_index.contains(cell["geometry"].bounds) #0
-        #     # if self.addresses_index.contains(cell["geometry"].bounds) #1
-        #     # if self.boarder_index.contains(cell["geometry"].bounds) #2 # out of order, still running
-        #     # if cell["geometry"].bounds.intersection(self.boarder) #3 # to delete
-        #     # if self.boarder_index.crosses(cell["geometry"])
-        # ]
-        possible_matches = self.boarder_index.intersection(
-            np.array([x.bounds for x in diagram_gdf["geometry"]])
-        )
+                    try:
+                        self.adjacency_map[line].add(count)  # unique up to .id
+                    except KeyError:
+                        self.adjacency_map[line] = {count}
 
-        # possible_matches = [(count, cell) for count, cell in diagram_gdf.iterrows() if not self.boarder_index.intersects(cell["geometry"].bounds)]
+                    try:
+                        self.adjacency_map[reversed_line].add(count)  # unique up to .id
+                    except KeyError:
+                        self.adjacency_map[reversed_line] = {count}
 
-        # precise_matches = [(count, cell) for count, cell in possible_matches if cell["geometry"].intersects(self.union)]
-        starting_size = len(diagram_gdf)
-        print(starting_size)
+                    # self.adjacency_map[line].add(count)
+                    # self.adjacency_map[reversed_line].add(count)
 
-        diagram_filtered = geopandas.GeoDataFrame()
-        for count in tqdm.tqdm(possible_matches):
-            # for count, cell in tqdm.tqdm(precise_matches):
-            cropped_valid = make_valid(
-                diagram_gdf.iloc[count].intersection(self.union)
-            ).buffer(0)
-            assert isinstance(cropped_valid, shapely.geometry.polygon.Polygon)
-            # print("cropped_valid", cropped_valid)  # debug
+                    # edge = HashableEdge(edge=line, id=count)
+                    # reversed_edge = HashableEdge(edge=reversed_line, id=count)
 
-            diagram_gdf.iloc[count] = cropped_valid
+                    # if self.adjacency_map.get(line): # could make this symmetric
+                    #     self.adjacency_map[line].add(edge) # unique up to .id
+                    # else:
+                    #     self.adjacency_map[line] = set(edge)
 
-        # for count, cell in tqdm.tqdm(possible_matches):
-        #     # for count, cell in tqdm.tqdm(precise_matches):
-        #     if cropped := cell["geometry"].intersection(self.union):
-        #         cropped_valid = make_valid(cropped).buffer(0)
-        #         assert isinstance(cropped_valid, shapely.geometry.polygon.Polygon)
-        #         # print("cropped_valid", cropped_valid)  # debug
+                    # if self.adjacency_map.get(reversed_line):
+                    #     self.adjacency_map[reversed_line].add(reversed_edge)
+                    # else:
+                    #     self.adjacency_map[reversed_line] = set(reversed_edge)
 
-        #         diagram_gdf.iloc[count] = cropped_valid
+                    # self.adjacency_map[line].add(reversed_edge)
+                    # self.adjacency_map[reversed_line].add(edge)
 
-        # for count in range(len(possible_matches), len(diagram_gdf)):
-        #         del diagram_gdf.iloc[count] # remove if not necessary
+        print("Finding border cells")  # debug
+        border_cells = set()
+        for count, cell in tqdm.tqdm(diagram_gdf.iterrows(), total=len(diagram_gdf)):
+            for polygon in cell:
+                for line in auxiliary.find_polygon_border(polygon):  # tuple
+                    # print(len(self.adjacency_map.get(line).union(self.adjacency_map.get(reversed_line))))
+                    # if len(self.adjacency_map.get(line).union(self.adjacency_map.get(reversed_line)))< 3:
+                    if len(self.adjacency_map.get(line)) <= 1:
+                        # print(count, self.adjacency_map.get(line).union(self.adjacency_map.get(reversed_line)))
+                        border_cells.add(count)
+                        # border_cells.union(self.adjacency_map.get(line).union(self.adjacency_map.get(reversed_line)))
 
-        # return diagram_gdf
-        print(
-            "Sizes!: ",
-            len(possible_matches),
-            len(diagram_filtered),
-            len(diagram_gdf),
-            "Starting size",
-            starting_size,
-        )
-        return diagram_filtered
+        breakpoint()
 
-        # diagram_clipped = make_valid(diagram).intersection(self.boarder).buffer(0)
+        print("Finding adjacent cells", len(border_cells))  # debug
+        crust = border_cells
+        self.already_seen = set()
+        for count, cell in tqdm.tqdm(enumerate(border_cells), total=len(border_cells)):
+            adjacent_cells = self.find_adjacent_crust(
+                cell, diagram_gdf, border_cells.union(crust)
+            )
+            crust = crust.union(adjacent_cells)
+            if count == 100:
+                break
 
-        # districts = self.addresses.copy(deep=True)
-        # districts["geometry"] = diagram.geoms
+        breakpoint()
 
-        # Option 1
-        # districts = []
-        # for each_geom in diagram_clipped.geoms:
-        #     districts.append({"geometry": each_geom})
+        # border_cells = border_cells.union(crust)
+        print("Cropping border cells", len(border_cells))  # debug
+        # border_cells = {x for x in range(13)}
+        for each_cell_id in tqdm.tqdm(border_cells, total=len(border_cells)):
+            # cropped_cell = make_valid(cell.intersection(self.union))
+            cropped_cell = (
+                diagram_gdf.iloc[each_cell_id].get("geometry").intersection(self.union)
+            )
 
-        # return geopandas.GeoDataFrame(districts)
+            # print(cell)
+            # cell["geometry"] = make_valid(cropped_cell)
+            # print(cell["geometry"])
+            # diagram_gdf.iloc[each_cell_id] = cell
+            if cropped_cell:  # both are valid
+                diagram_gdf.iloc[each_cell_id]["geometry"] = cropped_cell
+                # diagram_gdf["geometry"][each_cell_id] = cropped_cell
 
-        # Option 2
-        # return geopandas.GeoDataFrame(diagram_clipped.geoms, columns = ["geometry"])
+            # assert diagram_gdf.iloc[each_cell_id]["geometry"] != cell
+            # assert diagram_gdf.iloc[each_cell_id]["geometry"] == cropped_cell
+
+        print(diagram_gdf, len(diagram_gdf), print(diagram_gdf["geometry"]))
+
+        self.diagram = diagram_gdf
+        return diagram_gdf
+
+    def find_adjacent_crust(self, cell, diagram_gdf, border_cells):
+        adjacent = set()
+
+        for line in auxiliary.find_polygon_border(
+            diagram_gdf.iloc[cell].get("geometry")
+        ):
+            #     edge = HashableEdge(edge=line, id=cell)
+            for other_cell in self.adjacency_map[line]:
+                if not other_cell in self.already_seen:
+                    if (
+                        other_cell != cell
+                        and (not other_cell in border_cells)
+                        and self.union.contains(
+                            diagram_gdf.iloc[other_cell].get("geometry")
+                        )
+                    ):
+                        # print(other_cell)
+                        adjacent.add(other_cell)
+                        adjacent.union(
+                            self.find_adjacent_crust(
+                                other_cell, diagram_gdf, border_cells.union(adjacent)
+                            )
+                        )
+                    else:
+                        self.already_seen.add(other_cell)
+
+        # for line in auxiliary.find_polygon_border(diagram_gdf.iloc[cell].get("geometry")):
+        #     edge = HashableEdge(edge=line, id=cell)
+        #     for adjacent_edge in self.adjacency_map[line]:
+        #         # print(adjacent_edge, type(adjacent_edge))
+        #         if adjacent_edge.id != edge.id and not adjacent_edge.id in border_cells:
+        #             if not self.border.intersects(adjacent_edge):
+        #                 adjacent.add(adjacent_edge.id)
+        #                 adjacent.union(self.find_adjacent_crust(adjacent_edge.id, diagram_gdf, border_cells.union(adjacent)))
+
+        return adjacent
 
     def generate_dual(self):
         """
@@ -181,7 +246,8 @@ class Addresses:
         addresses: str = "addresses",
         polygon: str = "polygon",
         diagram: str = "diagram",
-        boarder: str = "boarder",
+        diagram_unfiltered: str = "diagram_unfiltered",
+        border: str = "border",
     ):
         """
         Exports current state to a directory
@@ -190,17 +256,18 @@ class Addresses:
             dirname += "/"
 
         for name, each_object in (
-            (addresses, self.addresses),
+            # (addresses, self.addresses),
             (polygon, self.polygon),
-            # (boarder, self.boarder),
+            (border, self.border),
             (diagram, self.diagram),
-            ("diagram_filtered", self.diagram_unfiltered),
+            (diagram_unfiltered, self.diagram_unfiltered),
         ):
-            print("Export", name, each_object)  # debug
+            print("Export", name, each_object, len(each_object))  # debug
             try:
-                export(each_object, dirname + name)
+                export(each_object.dropna(subset=["geometry"]), dirname + name)
             except RuntimeError as e:
                 print("Error", e)
+            print("Export done")
 
     @staticmethod
     def merge_addresses(

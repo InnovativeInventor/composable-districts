@@ -1,6 +1,6 @@
 import geopandas
-import shapely
 import pandas
+import shapely
 
 """
 Auxiliary helper functions
@@ -14,7 +14,21 @@ def concat_gdf(*args):
     return geopandas.GeoDataFrame(pandas.concat([*args], ignore_index=True))
 
 
-def find_boarder(object):
+def floatify(thing: tuple) -> tuple:
+    return (float(thing[0]), float(thing[1]))
+
+
+def find_polygon_border(object):
+    prev_line = floatify(object.exterior.coords[-1])
+    for each_object in object.exterior.coords:
+        int_object = floatify(each_object)
+        yield (prev_line, int_object)
+        yield (int_object, prev_line)
+        # yield shapely.geometry.LineString((prev_line, each_object))
+        prev_line = int_object
+
+
+def find_border(object):
     lines = []
     # object = object.bounds
     object_hull = object.convex_hull
